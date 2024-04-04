@@ -1,8 +1,8 @@
----------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
       name:  <unnamed>
        log:  /Users/abdulrazzaktamim/Documents/GitHub/mines_reproduction/results/Table_2.log
   log type:  text
- opened on:  29 Mar 2024, 16:22:09
+ opened on:   4 Apr 2024, 01:25:53
 
 . 
 . 
@@ -19,14 +19,74 @@
 
 . 
 . /*condition for estimation with spatial lags of mines*/
-. global condition_around "(mainmineral != "diamond" & mainmineral_around != "diamond" & mainmineral != "tantal
-> um" & mainmineral_around != "tantalum")"
+. global condition_around "(mainmineral != "diamond" & mainmineral_around != "diamond" & mai
+> nmineral != "tantalum" & mainmineral_around != "tantalum")"
+
+. /*
+> /*column 1: time varying mining area dummy*/
+> eststo: my_reg2hdfespatial acled  mines main_lprice main_lprice_mines m_lprice_mines      
+>                                                                                           
+>                             , timevar(it) panelvar(cell) lat(latitude) lon(longitude) dist
+> cutoff(500) lagcutoff(100000) 
+> /*column 2: mine open the entire period*/
+> eststo: my_reg2hdfespatial acled  main_lprice_mines                                       
+>                               if sd_mines == 0                                            
+>                                     , timevar(it) panelvar(cell) lat(latitude) lon(longitu
+> de) distcutoff(500) lagcutoff(100000) 
+> /*column 3: mine open the entire period, with surrounding mines*/
+> eststo: my_reg2hdfespatial acled  main_lprice_mines main_lprice_a                         
+>                       if sd_mines == 0  & sd_mines_a ==0  & $condition_around         , ti
+> mevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000)
+> /*column 4: mine at some point over the period*/
+> eststo: my_reg2hdfespatial acled   main_lprice_hist0                                      
+>                                                                                           
+>                                                             , timevar(it) panelvar(cell) l
+> at(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+> /*column 5: year dummies only */
+> eststo: my_reg2hdfespatial acled  main_lprice_mines                                       
+>                               if sd_mines == 0                                            
+>                                             , timevar(year) panelvar(cell) lat(latitude) l
+> on(longitude) distcutoff(500) lagcutoff(100000) 
+> 
+> preserve
+> /*column 6: neighbourhood FE*/
+> use "$Output_data/BCRT_neighbour", clear
+> eststo: my_reg2hdfespatial acled   mines main_lprice main_lprice_mines m_lprice_mines   if
+>  sd_mines == 0                                                                            
+>     , timevar(year) panelvar(couple) lat(latitude) lon(longitude) distcutoff(500) lagcutof
+> f(100000) 
+> 
+> restore
+> 
+> set linesize 250
+> esttab, mtitles drop(m_lprice_mines) b(%5.3f) se(%5.3f) compress r2 starlevels(c 0.1 b 0.0
+> 5 a 0.01)  se 
+> esttab, mtitles drop(m_lprice_mines) b(%5.3f) se(%5.3f) r2  starlevels({$^c$} 0.1 {$^b$} 0
+> .05 {$^a$} 0.01) se tex label  title(Table 2) 
+> eststo clear
+> 
+> log close
+> 
+> */
+. 
+. g main_price = exp(main_lprice)
+
+. scatter main_price main_lprice
+
+. g main_price_mines = main_price*mines
+(96 missing values generated)
+
+. bys mainmineral: egen m_main_price = mean(main_price)
+
+. g m_price_mines = mines*m_main_price
+(96 missing values generated)
+
+. g main_price_hist0 = main_price*max_mine
 
 . 
 . /*column 1: time varying mining area dummy*/
-. eststo: my_reg2hdfespatial acled  mines main_lprice main_lprice_mines m_lprice_mines                         
->                                                                                                    , timevar(
-> it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+. eststo: my_reg2hdfespatial acled mines main_lprice main_lprice_mines m_lprice_mines, timev
+> ar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
  
 OLS REGRESSION
  
@@ -47,13 +107,39 @@ SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
 main_lprice_mines |   .0861189   .0344014     2.50   0.012     .0186927     .153545
    m_lprice_mines |  -.0978344   .0379302    -2.58   0.010    -.1721769   -.0234919
 -----------------------------------------------------------------------------------
-/Users/abdulrazzaktamim/Documents/GitHub/S-RLS/RCT/F2F/4. Analyze/code
-(est1 stored)
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est6 stored)
+
+. eststo: my_reg2hdfespatial acled mines main_price main_price_mines m_price_mines, timevar(
+> it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+ 
+OLS REGRESSION
+ 
+SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
+             AND PANEL-SPECIFIC SERIAL CORRELATION
+ 
+DEPENDANT VARIABLE: acled
+INDEPENDANT VARIABLES:  mines main_price main_price_mines m_price_mines
+ 
+SPATIAL CORRELATION KERNAL CUTOFF: 500 KM
+(NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
+SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
+----------------------------------------------------------------------------------
+           acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-----------------+----------------------------------------------------------------
+           mines |   .0340614   .0345683     0.99   0.324    -.0336918    .1018145
+      main_price |  -6.67e-10   2.81e-09    -0.24   0.812    -6.18e-09    4.85e-09
+main_price_mines |   3.02e-09   2.94e-09     1.03   0.304    -2.74e-09    8.78e-09
+   m_price_mines |  -2.89e-09   3.70e-09    -0.78   0.434    -1.01e-08    4.36e-09
+----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est7 stored)
 
 . /*column 2: mine open the entire period*/
-. eststo: my_reg2hdfespatial acled  main_lprice_mines                                                          
->            if sd_mines == 0                                                                                , 
-> timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+. eststo: my_reg2hdfespatial acled main_lprice_mines if sd_mines == 0, timevar(it) panelvar(
+> cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
  
 OLS REGRESSION
  
@@ -71,13 +157,12 @@ SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
 ------------------+----------------------------------------------------------------
 main_lprice_mines |   .0716129   .0198858     3.60   0.000     .0326372    .1105886
 -----------------------------------------------------------------------------------
-/Users/abdulrazzaktamim/Documents/GitHub/S-RLS/RCT/F2F/4. Analyze/code
-(est2 stored)
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est8 stored)
 
-. /*column 3: mine open the entire period, with surrounding mines*/
-. eststo: my_reg2hdfespatial acled  main_lprice_mines main_lprice_a                                            
->    if sd_mines == 0  & sd_mines_a ==0  & $condition_around         , timevar(it) panelvar(cell) lat(latitude)
->  lon(longitude) distcutoff(500) lagcutoff(100000)
+. eststo: my_reg2hdfespatial acled main_price_mines if sd_mines == 0, timevar(it) panelvar(c
+> ell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
  
 OLS REGRESSION
  
@@ -85,25 +170,23 @@ SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
              AND PANEL-SPECIFIC SERIAL CORRELATION
  
 DEPENDANT VARIABLE: acled
-INDEPENDANT VARIABLES:  main_lprice_mines main_lprice_a
+INDEPENDANT VARIABLES:  main_price_mines
  
 SPATIAL CORRELATION KERNAL CUTOFF: 500 KM
 (NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
 SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
------------------------------------------------------------------------------------
-            acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
-------------------+----------------------------------------------------------------
-main_lprice_mines |   .0600584   .0214257     2.80   0.005     .0180643    .1020525
-    main_lprice_a |   .0207079   .0061915     3.34   0.001     .0085727     .032843
------------------------------------------------------------------------------------
-/Users/abdulrazzaktamim/Documents/GitHub/S-RLS/RCT/F2F/4. Analyze/code
-(est3 stored)
+----------------------------------------------------------------------------------
+           acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-----------------+----------------------------------------------------------------
+main_price_mines |   3.06e-09   1.29e-09     2.37   0.018     5.31e-10    5.60e-09
+----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est9 stored)
 
 . /*column 4: mine at some point over the period*/
-. eststo: my_reg2hdfespatial acled   main_lprice_hist0                                                         
->                                                                                                              
->                       , timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100
-> 000) 
+. eststo: my_reg2hdfespatial acled main_lprice_hist0, timevar(it) panelvar(cell) lat(latitud
+> e) lon(longitude) distcutoff(500) lagcutoff(100000) 
  
 OLS REGRESSION
  
@@ -121,13 +204,12 @@ SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
 ------------------+----------------------------------------------------------------
 main_lprice_hist0 |   .0451219    .013518     3.34   0.001     .0186268     .071617
 -----------------------------------------------------------------------------------
-/Users/abdulrazzaktamim/Documents/GitHub/S-RLS/RCT/F2F/4. Analyze/code
-(est4 stored)
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est10 stored)
 
-. /*column 5: year dummies only */
-. eststo: my_reg2hdfespatial acled  main_lprice_mines                                                          
->            if sd_mines == 0                                                                                  
->       , timevar(year) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+. eststo: my_reg2hdfespatial acled main_price_hist0, timevar(it) panelvar(cell) lat(latitude
+> ) lon(longitude) distcutoff(500) lagcutoff(100000) 
  
 OLS REGRESSION
  
@@ -135,28 +217,231 @@ SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
              AND PANEL-SPECIFIC SERIAL CORRELATION
  
 DEPENDANT VARIABLE: acled
-INDEPENDANT VARIABLES:  main_lprice_mines
+INDEPENDANT VARIABLES:  main_price_hist0
  
 SPATIAL CORRELATION KERNAL CUTOFF: 500 KM
 (NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
 SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
------------------------------------------------------------------------------------
-            acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
-------------------+----------------------------------------------------------------
-main_lprice_mines |   .0847991   .0237682     3.57   0.000     .0382139    .1313843
------------------------------------------------------------------------------------
-/Users/abdulrazzaktamim/Documents/GitHub/S-RLS/RCT/F2F/4. Analyze/code
-(est5 stored)
+----------------------------------------------------------------------------------
+           acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-----------------+----------------------------------------------------------------
+main_price_hist0 |   2.22e-09   9.73e-10     2.28   0.023     3.12e-10    4.13e-09
+----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est11 stored)
 
 . 
-. preserve
+. 
+end of do-file
 
-. /*column 6: neighbourhood FE*/
-. use "$Output_data/BCRT_neighbour", clear
+. do "/var/folders/nv/kxq6g1255f7bqwvg74kr30b40000gn/T//SD03624.000000"
 
-. eststo: my_reg2hdfespatial acled   mines main_lprice main_lprice_mines m_lprice_mines   if sd_mines == 0     
->                                                                            , timevar(year) panelvar(couple) l
-> at(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+. su main_lprice main_price if e(sample)
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+ main_lprice |          0
+  main_price |          0
+
+. 
+end of do-file
+
+. do "/var/folders/nv/kxq6g1255f7bqwvg74kr30b40000gn/T//SD03624.000000"
+
+. su main_lprice main_price 
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+ main_lprice |    144,102    .1969765    1.629249          0   17.64027
+  main_price |    144,102      147131     1786029          1   4.58e+07
+
+. 
+end of do-file
+
+. histogram main_price
+(bin=51, start=1, width=898466.41)
+
+. ta main_price
+
+ main_price |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |    141,470       98.17       98.17
+   26.65725 |         32        0.02       98.20
+   28.83376 |         32        0.02       98.22
+   29.74304 |         32        0.02       98.24
+   30.29964 |         14        0.01       98.25
+   30.79986 |         14        0.01       98.26
+   30.86745 |         32        0.02       98.28
+   32.02487 |         32        0.02       98.30
+   32.22816 |         14        0.01       98.31
+    33.3038 |         14        0.01       98.32
+    33.5238 |         32        0.02       98.35
+    34.7648 |         14        0.01       98.36
+   35.39958 |         14        0.01       98.37
+   35.42487 |         14        0.01       98.37
+     39.021 |         14        0.01       98.38
+   39.91933 |         32        0.02       98.41
+   41.88372 |          7        0.00       98.41
+         42 |          7        0.00       98.42
+   42.13286 |          7        0.00       98.42
+   42.19125 |          7        0.00       98.43
+   43.26806 |          7        0.00       98.43
+    46.1956 |          7        0.00       98.44
+   46.19695 |         32        0.02       98.46
+   47.89896 |          7        0.00       98.46
+   48.32129 |          7        0.00       98.47
+   48.97472 |          7        0.00       98.47
+   49.23485 |          7        0.00       98.48
+   49.61595 |         32        0.02       98.50
+   56.30182 |         32        0.02       98.52
+    57.6986 |         32        0.02       98.54
+   59.15322 |         32        0.02       98.57
+   65.00002 |         14        0.01       98.58
+   65.32104 |          7        0.00       98.58
+   67.85867 |         14        0.01       98.59
+   73.14133 |         14        0.01       98.60
+   81.11948 |         32        0.02       98.62
+   102.9943 |         32        0.02       98.64
+   108.9182 |          7        0.00       98.65
+   111.2552 |          7        0.00       98.65
+    113.266 |         14        0.01       98.66
+   129.1421 |         14        0.01       98.67
+   133.2226 |         14        0.01       98.68
+   295.1465 |          7        0.00       98.69
+   508.1525 |          2        0.00       98.69
+    536.931 |          2        0.00       98.69
+   551.9792 |          2        0.00       98.69
+    561.299 |          2        0.00       98.69
+   567.9283 |          2        0.00       98.70
+   571.0438 |          2        0.00       98.70
+   637.6287 |          2        0.00       98.70
+    912.767 |          2        0.00       98.70
+   917.7151 |          8        0.01       98.71
+    923.681 |          8        0.01       98.71
+    976.368 |          2        0.00       98.71
+   1044.148 |          8        0.01       98.72
+   1078.744 |          8        0.01       98.72
+   1100.601 |          8        0.01       98.73
+   1182.051 |          8        0.01       98.73
+   1262.291 |          2        0.00       98.74
+   1262.858 |          8        0.01       98.74
+   1344.493 |          8        0.01       98.75
+   1381.306 |          8        0.01       98.75
+   1458.351 |          4        0.00       98.76
+   1494.764 |          4        0.00       98.76
+    1513.61 |          8        0.01       98.76
+   1522.495 |          4        0.00       98.77
+   1572.278 |          2        0.00       98.77
+   1586.961 |          4        0.00       98.77
+   1601.053 |          8        0.01       98.78
+   1601.144 |          4        0.00       98.78
+   1633.802 |          4        0.00       98.78
+   1701.766 |          4        0.00       98.78
+   1727.334 |         27        0.02       98.80
+   1734.142 |          4        0.00       98.81
+   1766.283 |          4        0.00       98.81
+   1776.982 |         27        0.02       98.83
+   1785.484 |          2        0.00       98.83
+   1849.708 |         27        0.02       98.85
+   1860.498 |         27        0.02       98.87
+   1898.308 |          4        0.00       98.87
+    1902.16 |          2        0.00       98.87
+   1913.045 |          8        0.01       98.88
+   1924.001 |          4        0.00       98.88
+   1972.644 |         27        0.02       98.90
+   2030.037 |         27        0.02       98.92
+   2197.233 |          4        0.00       98.92
+   2325.841 |         27        0.02       98.94
+   2376.051 |          2        0.00       98.94
+   2429.645 |          4        0.00       98.94
+    2515.24 |          4        0.00       98.94
+   2950.652 |         27        0.02       98.96
+   2986.065 |          8        0.01       98.97
+   3205.628 |          8        0.01       98.97
+   3678.875 |         27        0.02       98.99
+   4709.461 |         27        0.02       99.01
+   4816.189 |          2        0.00       99.01
+    4973.57 |          5        0.00       99.02
+   5286.291 |          2        0.00       99.02
+   5427.266 |          2        0.00       99.02
+    5768.48 |          2        0.00       99.02
+   5934.311 |          2        0.00       99.02
+   5940.511 |         27        0.02       99.04
+   5952.068 |          2        0.00       99.04
+   6084.855 |          2        0.00       99.04
+   6555.566 |         27        0.02       99.06
+   6579.159 |         27        0.02       99.08
+   6601.597 |          5        0.00       99.08
+   6671.024 |         27        0.02       99.10
+   7007.688 |          5        0.00       99.11
+     7076.7 |          5        0.00       99.11
+   7379.828 |          2        0.00       99.11
+   8032.024 |          5        0.00       99.12
+   8594.067 |          2        0.00       99.12
+   8764.522 |          2        0.00       99.12
+    9669.28 |          5        0.00       99.12
+   10676.77 |          5        0.00       99.12
+   12413.38 |          2        0.00       99.13
+   13387.77 |          2        0.00       99.13
+   13401.72 |          5        0.00       99.13
+    14232.1 |          5        0.00       99.13
+   14743.96 |          5        0.00       99.14
+   15808.13 |          2        0.00       99.14
+   18029.07 |          5        0.00       99.14
+    18066.4 |          2        0.00       99.14
+   19308.79 |          5        0.00       99.15
+   23738.53 |          5        0.00       99.15
+   34286.98 |          5        0.00       99.15
+   161132.3 |          1        0.00       99.16
+   165848.1 |          1        0.00       99.16
+   173825.4 |          1        0.00       99.16
+   175457.2 |          1        0.00       99.16
+   178268.2 |          1        0.00       99.16
+   184148.7 |          1        0.00       99.16
+   191724.5 |          1        0.00       99.16
+   220386.4 |          1        0.00       99.16
+   234969.1 |          1        0.00       99.16
+     363733 |          1        0.00       99.16
+   396527.6 |          1        0.00       99.16
+   411768.7 |          1        0.00       99.16
+   430548.6 |          1        0.00       99.16
+   573655.7 |          1        0.00       99.16
+    9842821 |         77        0.05       99.22
+   1.00e+07 |         77        0.05       99.27
+   1.02e+07 |         77        0.05       99.32
+   1.03e+07 |         77        0.05       99.38
+   1.09e+07 |         77        0.05       99.43
+   1.18e+07 |         77        0.05       99.49
+   1.29e+07 |          9        0.01       99.49
+   1.30e+07 |         77        0.05       99.54
+   1.30e+07 |          9        0.01       99.55
+   1.33e+07 |          9        0.01       99.56
+   1.35e+07 |         77        0.05       99.61
+   1.43e+07 |         77        0.05       99.66
+   1.90e+07 |         77        0.05       99.72
+   1.96e+07 |          9        0.01       99.72
+   2.01e+07 |          9        0.01       99.73
+   2.06e+07 |          9        0.01       99.74
+   2.06e+07 |         77        0.05       99.79
+   2.39e+07 |         77        0.05       99.84
+   2.47e+07 |          9        0.01       99.85
+   2.80e+07 |          9        0.01       99.86
+   2.86e+07 |         77        0.05       99.91
+   2.88e+07 |          9        0.01       99.92
+   3.49e+07 |         77        0.05       99.97
+   3.54e+07 |          9        0.01       99.98
+   3.59e+07 |          9        0.01       99.98
+   3.86e+07 |          9        0.01       99.99
+   4.32e+07 |          9        0.01       99.99
+   4.58e+07 |          9        0.01      100.00
+------------+-----------------------------------
+      Total |    144,102      100.00
+
+. do "/var/folders/nv/kxq6g1255f7bqwvg74kr30b40000gn/T//SD03624.000000"
+
+. eststo: my_reg2hdfespatial acled mines main_lprice main_lprice_mines m_lprice_mines, timev
+> ar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
  
 OLS REGRESSION
  
@@ -172,86 +457,424 @@ SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
 -----------------------------------------------------------------------------------
             acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
 ------------------+----------------------------------------------------------------
-            mines |   .0480404    .064653     0.74   0.457    -.0786859    .1747667
-      main_lprice |   .0283775   .0187245     1.52   0.130    -.0083243    .0650793
-main_lprice_mines |   .1082769   .0412042     2.63   0.009     .0275126    .1890412
-   m_lprice_mines |  -.1081159   .0417161    -2.59   0.010    -.1898836   -.0263482
+            mines |   .1124112   .0645139     1.74   0.081    -.0140347    .2388572
+      main_lprice |  -.0285656   .0322305    -0.89   0.375    -.0917367    .0346056
+main_lprice_mines |   .0861189   .0344014     2.50   0.012     .0186927     .153545
+   m_lprice_mines |  -.0978344   .0379302    -2.58   0.010    -.1721769   -.0234919
 -----------------------------------------------------------------------------------
-/Users/abdulrazzaktamim/Documents/GitHub/S-RLS/RCT/F2F/4. Analyze/code
-(est6 stored)
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est12 stored)
+
+. eststo: my_reg2hdfespatial acled mines main_lprice main_lprice_mines m_lprice_mines, timev
+> ar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(50) lagcutoff(100000) 
+ 
+OLS REGRESSION
+ 
+SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
+             AND PANEL-SPECIFIC SERIAL CORRELATION
+ 
+DEPENDANT VARIABLE: acled
+INDEPENDANT VARIABLES:  mines main_lprice main_lprice_mines m_lprice_mines
+ 
+SPATIAL CORRELATION KERNAL CUTOFF: 50 KM
+(NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
+SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
+-----------------------------------------------------------------------------------
+            acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+            mines |   .1124112   .0621322     1.81   0.070    -.0093666    .2341891
+      main_lprice |  -.0285656   .0321293    -0.89   0.374    -.0915384    .0344073
+main_lprice_mines |   .0861189   .0347578     2.48   0.013     .0179942    .1542435
+   m_lprice_mines |  -.0978344   .0382626    -2.56   0.011    -.1728283   -.0228405
+-----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est13 stored)
+
+. /*column 2: mine open the entire period*/
+. eststo: my_reg2hdfespatial acled main_lprice_mines if sd_mines == 0, timevar(it) panelvar(
+> cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+ 
+OLS REGRESSION
+ 
+SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
+             AND PANEL-SPECIFIC SERIAL CORRELATION
+ 
+DEPENDANT VARIABLE: acled
+INDEPENDANT VARIABLES:  main_lprice_mines
+ 
+SPATIAL CORRELATION KERNAL CUTOFF: 500 KM
+(NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
+SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
+-----------------------------------------------------------------------------------
+            acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+main_lprice_mines |   .0716129   .0198858     3.60   0.000     .0326372    .1105886
+-----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est14 stored)
+
+. eststo: my_reg2hdfespatial acled main_lprice_mines if sd_mines == 0, timevar(it) panelvar(
+> cell) lat(latitude) lon(longitude) distcutoff(50) lagcutoff(100000) 
+ 
+OLS REGRESSION
+ 
+SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
+             AND PANEL-SPECIFIC SERIAL CORRELATION
+ 
+DEPENDANT VARIABLE: acled
+INDEPENDANT VARIABLES:  main_lprice_mines
+ 
+SPATIAL CORRELATION KERNAL CUTOFF: 50 KM
+(NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
+SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
+-----------------------------------------------------------------------------------
+            acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+main_lprice_mines |   .0716129   .0190659     3.76   0.000     .0342442    .1089817
+-----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est15 stored)
+
+. /*column 4: mine at some point over the period*/
+. eststo: my_reg2hdfespatial acled main_lprice_hist0, timevar(it) panelvar(cell) lat(latitud
+> e) lon(longitude) distcutoff(500) lagcutoff(100000) 
+ 
+OLS REGRESSION
+ 
+SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
+             AND PANEL-SPECIFIC SERIAL CORRELATION
+ 
+DEPENDANT VARIABLE: acled
+INDEPENDANT VARIABLES:  main_lprice_hist0
+ 
+SPATIAL CORRELATION KERNAL CUTOFF: 500 KM
+(NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
+SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
+-----------------------------------------------------------------------------------
+            acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+main_lprice_hist0 |   .0451219    .013518     3.34   0.001     .0186268     .071617
+-----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est16 stored)
+
+. eststo: my_reg2hdfespatial acled main_lprice_hist0, timevar(it) panelvar(cell) lat(latitud
+> e) lon(longitude) distcutoff(50) lagcutoff(100000) 
+ 
+OLS REGRESSION
+ 
+SE CORRECTED FOR CROSS-SECTIONAL SPATIAL DEPENDANCE
+             AND PANEL-SPECIFIC SERIAL CORRELATION
+ 
+DEPENDANT VARIABLE: acled
+INDEPENDANT VARIABLES:  main_lprice_hist0
+ 
+SPATIAL CORRELATION KERNAL CUTOFF: 50 KM
+(NOTE: LINEAR BARTLETT WINDOW USED FOR SPATIAL KERNAL)
+SERIAL CORRELATION KERNAL CUTOFF: 100000 PERIODS
+-----------------------------------------------------------------------------------
+            acled | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+------------------+----------------------------------------------------------------
+main_lprice_hist0 |   .0451219   .0135126     3.34   0.001     .0186375    .0716062
+-----------------------------------------------------------------------------------
+/Users/abdulrazzaktamim/Library/CloudStorage/Dropbox/Files/Attended Universities/Berkeley/Co
+> urses/E. Spring 2024/Econ 270b/psets/ps2/113068-V1/20150774_data/Do/Construction do-files
+(est17 stored)
 
 . 
-. restore
+end of do-file
+
+. do "/var/folders/nv/kxq6g1255f7bqwvg74kr30b40000gn/T//SD03624.000000"
+
+. use "$Output_data/BCRT_actor_ethnic", clear
 
 . 
-. set linesize 250
+. egen actor_country      = group(actor iso_1)
 
-. esttab, mtitles drop(m_lprice_mines) b(%5.3f) se(%5.3f) compress r2 starlevels(c 0.1 b 0.05 a 0.01)  se 
+. egen it                         = group(iso_1 year)
 
-----------------------------------------------------------------------------
-                 (1)        (2)        (3)        (4)        (5)        (6) 
-                est1       est2       est3       est4       est5       est6 
-----------------------------------------------------------------------------
-mines          0.112c                                                 0.048 
-             (0.065)                                                (0.065) 
-
-main_lpr~e    -0.029                                                  0.028 
-             (0.032)                                                (0.019) 
-
-main_lpr~s     0.086b     0.072a     0.060a                0.085a     0.108a
-             (0.034)    (0.020)    (0.021)               (0.024)    (0.041) 
-
-main_lpr~a                           0.021a                                 
-                                   (0.006)                                  
-
-main_lpr~0                                      0.045a                      
-                                              (0.014)                       
-----------------------------------------------------------------------------
-N             143768     142296     127974     143864     142296      17360 
-R-sq           0.000      0.000      0.000      0.000      0.000      0.005 
-----------------------------------------------------------------------------
-Standard errors in parentheses
-c p<0.1, b p<0.05, a p<0.01
-
-. esttab, mtitles drop(m_lprice_mines) b(%5.3f) se(%5.3f) r2  starlevels({$^c$} 0.1 {$^b$} 0.05 {$^a$} 0.01) se tex label  title(Table 2) 
-
-\begin{table}[htbp]\centering
-\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
-\caption{Table 2}
-\begin{tabular}{l*{6}{c}}
-\hline\hline
-                    &\multicolumn{1}{c}{(1)}&\multicolumn{1}{c}{(2)}&\multicolumn{1}{c}{(3)}&\multicolumn{1}{c}{(4)}&\multicolumn{1}{c}{(5)}&\multicolumn{1}{c}{(6)}\\
-                    &\multicolumn{1}{c}{est1}&\multicolumn{1}{c}{est2}&\multicolumn{1}{c}{est3}&\multicolumn{1}{c}{est4}&\multicolumn{1}{c}{est5}&\multicolumn{1}{c}{est6}\\
-\hline
-mine $>0$           &       0.112{$^c$}&                  &                  &                  &                  &       0.048      \\
-                    &     (0.065)      &                  &                  &                  &                  &     (0.065)      \\
-[1em]
-$\ln$ price main mineral&      -0.029      &                  &                  &                  &                  &       0.028      \\
-                    &     (0.032)      &                  &                  &                  &                  &     (0.019)      \\
-[1em]
-$\ln$ price $\times$ mines $>0$&       0.086{$^b$}&       0.072{$^a$}&       0.060{$^a$}&                  &       0.085{$^a$}&       0.108{$^a$}\\
-                    &     (0.034)      &     (0.020)      &     (0.021)      &                  &     (0.024)      &     (0.041)      \\
-[1em]
-$\ln$ price $\times$ mines $>0$ (neighbouring cells)&                  &                  &       0.021{$^a$}&                  &                  &                  \\
-                    &                  &                  &     (0.006)      &                  &                  &                  \\
-[1em]
-$\ln$ price $\times$ mines $>0$ (ever)&                  &                  &                  &       0.045{$^a$}&                  &                  \\
-                    &                  &                  &                  &     (0.014)      &                  &                  \\
-\hline
-Observations        &      143768      &      142296      &      127974      &      143864      &      142296      &       17360      \\
-\(R^{2}\)           &       0.000      &       0.000      &       0.000      &       0.000      &       0.000      &       0.005      \\
-\hline\hline
-\multicolumn{7}{l}{\footnotesize Standard errors in parentheses}\\
-\multicolumn{7}{l}{\footnotesize {$^c$} p<0.1, {$^b$} p<0.05, {$^a$} p<0.01}\\
-\end{tabular}
-\end{table}
-
-. eststo clear
+. egen actor_group        = group(actor)
 
 . 
-. log close
-      name:  <unnamed>
-       log:  /Users/abdulrazzaktamim/Documents/GitHub/mines_reproduction/results/Table_2.log
-  log type:  text
- closed on:  29 Mar 2024, 16:27:30
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+. gen acled_exclu_ethnic = nb_acled_exclu_ethnic>0
+
+. 
+. g interact_t0           = price_ethnic*mines_t0 
+
+. g interact_t0_ni        = price_ethnic_ni*mines_t0_ni 
+
+. g interact_t0_nh        = price_ethnic_nh*mines_t0_nh
+
+. 
+end of do-file
+
+. do "/var/folders/nv/kxq6g1255f7bqwvg74kr30b40000gn/T//SD03624.000000"
+
+. eststo: reghdfe acled                            price_ethnic mines_t0 interact_t0 if sd_m
+> ine_ethnic==0, absorb(actor_country year) vce(cluster actor_group)   
+(MWFE estimator converged in 2 iterations)
+note: mines_t0 is probably collinear with the fixed effects (all partialled-out values are c
+> lose to zero; tol = 1.0e-09)
+
+HDFE Linear regression                            Number of obs   =      2,352
+Absorbing 2 HDFE groups                           F(   2,    104) =    1092.58
+Statistics robust to heteroskedasticity           Prob > F        =     0.0000
+                                                  R-squared       =     0.2463
+                                                  Adj R-squared   =     0.1831
+                                                  Within R-sq.    =     0.0017
+Number of clusters (actor_group) =        105     Root MSE        =     0.3715
+
+                          (Std. err. adjusted for 105 clusters in actor_group)
+------------------------------------------------------------------------------
+             |               Robust
+       acled | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+price_ethnic |  -.7168008   .0574309   -12.48   0.000    -.8306885   -.6029131
+    mines_t0 |          0  (omitted)
+ interact_t0 |   .5622103   .0122627    45.85   0.000     .5378929    .5865276
+       _cons |   .2054514   .0153951    13.35   0.000     .1749224    .2359804
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-------------------------------------------------------+
+   Absorbed FE | Categories  - Redundant  = Num. Coefs |
+---------------+---------------------------------------|
+ actor_country |       168         168           0    *|
+          year |        14           1          13     |
+-------------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+(est18 stored)
+
+. eststo: reghdfe acled                            price_ethnic mines_t0 interact_t0 if sd_m
+> ine_ethnic==0, absorb(actor_country it) vce(cluster actor_group)   
+(dropped 126 singleton observations)
+(MWFE estimator converged in 2 iterations)
+note: mines_t0 is probably collinear with the fixed effects (all partialled-out values are c
+> lose to zero; tol = 1.0e-09)
+
+HDFE Linear regression                            Number of obs   =      2,226
+Absorbing 2 HDFE groups                           F(   2,    101) =       2.92
+Statistics robust to heteroskedasticity           Prob > F        =     0.0586
+                                                  R-squared       =     0.3603
+                                                  Adj R-squared   =     0.1968
+                                                  Within R-sq.    =     0.0005
+Number of clusters (actor_group) =        102     Root MSE        =     0.3695
+
+                          (Std. err. adjusted for 102 clusters in actor_group)
+------------------------------------------------------------------------------
+             |               Robust
+       acled | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+price_ethnic |  -.4011204   .1952669    -2.05   0.043    -.7884774   -.0137633
+    mines_t0 |          0  (omitted)
+ interact_t0 |   .2841153   .1189437     2.39   0.019     .0481629    .5200676
+       _cons |   .2239355   .0247783     9.04   0.000      .174782    .2730889
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-------------------------------------------------------+
+   Absorbed FE | Categories  - Redundant  = Num. Coefs |
+---------------+---------------------------------------|
+ actor_country |       159         159           0    *|
+            it |       294           1         293     |
+-------------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+(est19 stored)
+
+. 
+end of do-file
+
+. ta mines_t0
+
+    # mines |
+       main |
+mineral, in |
+country, t0 |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |      2,422       95.05       95.05
+          1 |        112        4.40       99.45
+          2 |         14        0.55      100.00
+------------+-----------------------------------
+      Total |      2,548      100.00
+
+. do "/var/folders/nv/kxq6g1255f7bqwvg74kr30b40000gn/T//SD03624.000000"
+
+. g mines2_t0 = mines_t0>0 if !mi(mines_t0)
+
+. g interact2_t0 = price_ethnic*mines2_t0 
+
+. 
+. * Baseline
+. eststo: reghdfe acled price_ethnic mines_t0 interact_t0 if sd_mine_ethnic==0, absorb(actor
+> _country year) vce(cluster actor_group)   
+(MWFE estimator converged in 2 iterations)
+note: mines_t0 is probably collinear with the fixed effects (all partialled-out values are c
+> lose to zero; tol = 1.0e-09)
+
+HDFE Linear regression                            Number of obs   =      2,352
+Absorbing 2 HDFE groups                           F(   2,    104) =    1092.58
+Statistics robust to heteroskedasticity           Prob > F        =     0.0000
+                                                  R-squared       =     0.2463
+                                                  Adj R-squared   =     0.1831
+                                                  Within R-sq.    =     0.0017
+Number of clusters (actor_group) =        105     Root MSE        =     0.3715
+
+                          (Std. err. adjusted for 105 clusters in actor_group)
+------------------------------------------------------------------------------
+             |               Robust
+       acled | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+price_ethnic |  -.7168008   .0574309   -12.48   0.000    -.8306885   -.6029131
+    mines_t0 |          0  (omitted)
+ interact_t0 |   .5622103   .0122627    45.85   0.000     .5378929    .5865276
+       _cons |   .2054514   .0153951    13.35   0.000     .1749224    .2359804
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-------------------------------------------------------+
+   Absorbed FE | Categories  - Redundant  = Num. Coefs |
+---------------+---------------------------------------|
+ actor_country |       168         168           0    *|
+          year |        14           1          13     |
+-------------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+(est20 stored)
+
+. eststo: reghdfe acled price_ethnic mines2_t0 interact2_t0 if sd_mine_ethnic==0, absorb(act
+> or_country year) vce(cluster actor_group)   
+(MWFE estimator converged in 2 iterations)
+note: mines2_t0 is probably collinear with the fixed effects (all partialled-out values are 
+> close to zero; tol = 1.0e-09)
+note: mines2_t0 omitted because of collinearity
+
+HDFE Linear regression                            Number of obs   =      2,352
+Absorbing 2 HDFE groups                           F(   1,    104) =       0.04
+Statistics robust to heteroskedasticity           Prob > F        =     0.8387
+                                                  R-squared       =     0.2451
+                                                  Adj R-squared   =     0.1821
+                                                  Within R-sq.    =     0.0000
+Number of clusters (actor_group) =        105     Root MSE        =     0.3717
+
+                          (Std. err. adjusted for 105 clusters in actor_group)
+------------------------------------------------------------------------------
+             |               Robust
+       acled | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+price_ethnic |   .0328129   .1608095     0.20   0.839    -.2860784    .3517042
+   mines2_t0 |          0  (omitted)
+interact2_t0 |          0  (omitted)
+       _cons |   .2054514   .0474624     4.33   0.000     .1113316    .2995712
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-------------------------------------------------------+
+   Absorbed FE | Categories  - Redundant  = Num. Coefs |
+---------------+---------------------------------------|
+ actor_country |       168         168           0    *|
+          year |        14           1          13     |
+-------------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+(est21 stored)
+
+. 
+. eststo: reghdfe acled price_ethnic mines_t0 interact_t0 if sd_mine_ethnic==0, absorb(actor
+> _country it) vce(cluster actor_group)   
+(dropped 126 singleton observations)
+(MWFE estimator converged in 2 iterations)
+note: mines_t0 is probably collinear with the fixed effects (all partialled-out values are c
+> lose to zero; tol = 1.0e-09)
+
+HDFE Linear regression                            Number of obs   =      2,226
+Absorbing 2 HDFE groups                           F(   2,    101) =       2.92
+Statistics robust to heteroskedasticity           Prob > F        =     0.0586
+                                                  R-squared       =     0.3603
+                                                  Adj R-squared   =     0.1968
+                                                  Within R-sq.    =     0.0005
+Number of clusters (actor_group) =        102     Root MSE        =     0.3695
+
+                          (Std. err. adjusted for 102 clusters in actor_group)
+------------------------------------------------------------------------------
+             |               Robust
+       acled | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+price_ethnic |  -.4011204   .1952669    -2.05   0.043    -.7884774   -.0137633
+    mines_t0 |          0  (omitted)
+ interact_t0 |   .2841153   .1189437     2.39   0.019     .0481629    .5200676
+       _cons |   .2239355   .0247783     9.04   0.000      .174782    .2730889
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-------------------------------------------------------+
+   Absorbed FE | Categories  - Redundant  = Num. Coefs |
+---------------+---------------------------------------|
+ actor_country |       159         159           0    *|
+            it |       294           1         293     |
+-------------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+(est22 stored)
+
+. eststo: reghdfe acled price_ethnic mines2_t0 interact2_t0 if sd_mine_ethnic==0, absorb(act
+> or_country it) vce(cluster actor_group)   
+(dropped 126 singleton observations)
+(MWFE estimator converged in 2 iterations)
+note: mines2_t0 is probably collinear with the fixed effects (all partialled-out values are 
+> close to zero; tol = 1.0e-09)
+note: mines2_t0 omitted because of collinearity
+
+HDFE Linear regression                            Number of obs   =      2,226
+Absorbing 2 HDFE groups                           F(   1,    101) =       0.03
+Statistics robust to heteroskedasticity           Prob > F        =     0.8638
+                                                  R-squared       =     0.3600
+                                                  Adj R-squared   =     0.1969
+                                                  Within R-sq.    =     0.0000
+Number of clusters (actor_group) =        102     Root MSE        =     0.3695
+
+                          (Std. err. adjusted for 102 clusters in actor_group)
+------------------------------------------------------------------------------
+             |               Robust
+       acled | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+price_ethnic |   -.019111   .1111072    -0.17   0.864    -.2395178    .2012957
+   mines2_t0 |          0  (omitted)
+interact2_t0 |          0  (omitted)
+       _cons |    .222941   .0346492     6.43   0.000     .1542064    .2916756
+------------------------------------------------------------------------------
+
+Absorbed degrees of freedom:
+-------------------------------------------------------+
+   Absorbed FE | Categories  - Redundant  = Num. Coefs |
+---------------+---------------------------------------|
+ actor_country |       159         159           0    *|
+            it |       294           1         293     |
+-------------------------------------------------------+
+* = FE nested within cluster; treated as redundant for DoF computation
+(est23 stored)
+
+. 
+end of do-file
+
+. ta mines2_t0
+
+  mines2_t0 |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |      2,422       95.05       95.05
+          1 |        126        4.95      100.00
+------------+-----------------------------------
+      Total |      2,548      100.00
+
+. ta mines2_t0 mines_t0
+
+           |     # mines main mineral, in
+           |           country, t0
+ mines2_t0 |         0          1          2 |     Total
+-----------+---------------------------------+----------
+         0 |     2,422          0          0 |     2,422 
+         1 |         0        112         14 |       126 
+-----------+---------------------------------+----------
+     Total |     2,422        112         14 |     2,548 
+

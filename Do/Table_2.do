@@ -18,7 +18,7 @@ drop if mainmineral == "diamond" | mainmineral == "tantalum"
 
 /*condition for estimation with spatial lags of mines*/
 global condition_around "(mainmineral != "diamond" & mainmineral_around != "diamond" & mainmineral != "tantalum" & mainmineral_around != "tantalum")"
-
+/*
 /*column 1: time varying mining area dummy*/
 eststo: my_reg2hdfespatial acled  mines main_lprice main_lprice_mines m_lprice_mines     								   							, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
 /*column 2: mine open the entire period*/
@@ -44,4 +44,36 @@ eststo clear
 
 log close
 
+*/
+
+su main_lprice main_price 
+g main_price = exp(main_lprice)
+//scatter main_price main_lprice
+g main_price_mines = main_price*mines
+bys mainmineral: egen m_main_price = mean(main_price)
+g m_price_mines = mines*m_main_price
+g main_price_hist0 = main_price*max_mine
+
+/////////ROBUSTNESS #1
+/*column 1: time varying mining area dummy*/
+eststo: my_reg2hdfespatial acled mines main_lprice main_lprice_mines m_lprice_mines, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+eststo: my_reg2hdfespatial acled mines main_price main_price_mines m_price_mines, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+/*column 2: mine open the entire period*/
+eststo: my_reg2hdfespatial acled main_lprice_mines if sd_mines == 0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+eststo: my_reg2hdfespatial acled main_price_mines if sd_mines == 0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+/*column 4: mine at some point over the period*/
+eststo: my_reg2hdfespatial acled main_lprice_hist0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+eststo: my_reg2hdfespatial acled main_price_hist0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000)
+
+/////////ROBUSTNESS #2
+/*column 1: time varying mining area dummy*/
+eststo: my_reg2hdfespatial acled mines main_lprice main_lprice_mines m_lprice_mines, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+eststo: my_reg2hdfespatial acled mines main_lprice main_lprice_mines m_lprice_mines, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(50) lagcutoff(100000) 
+/*column 2: mine open the entire period*/
+eststo: my_reg2hdfespatial acled main_lprice_mines if sd_mines == 0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+eststo: my_reg2hdfespatial acled main_lprice_mines if sd_mines == 0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(50) lagcutoff(100000) 
+/*column 4: mine at some point over the period*/
+eststo: my_reg2hdfespatial acled main_lprice_hist0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(500) lagcutoff(100000) 
+eststo: my_reg2hdfespatial acled main_lprice_hist0, timevar(it) panelvar(cell) lat(latitude) lon(longitude) distcutoff(50) lagcutoff(100000) 
+ 
 
